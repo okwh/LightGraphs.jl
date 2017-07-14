@@ -1,7 +1,7 @@
 abstract type AbstractGraphFormat end
 
 """
-    loadgraph(file, gname="graph", format=LGFormat)
+    loadgraph(file, gname="graph", format=LGFormat())
 
 Read a graph named `gname` from `file` in the format `format`.
 
@@ -15,7 +15,13 @@ function loadgraph(fn::AbstractString, gname::AbstractString, format::AbstractGr
         loadgraph(io, gname, format)
     end
 end
-loadgraph(fn::AbstractString, gname::AbstractString="graph") = loadgraph(fn, gname, LGFormat())
+
+# loadgraph with a name but without a format
+loadgraph(fn::AbstractString, gname::AbstractString) = loadgraph(fn, gname, LGFormat())
+
+# loadgraph without a name but with an optional format.
+loadgraph(fn::AbstractString, format::AbstractGraphFormat=LGFormat()) = loadgraph(fn, "graph", format)
+
 
 
 """
@@ -28,17 +34,15 @@ Return a dictionary mapping graph name to graph.
 For unnamed graphs the default name \"graph\" will be used. This default
 may change in the future.
 """
-function loadgraphs(fn::AbstractString, format::AbstractGraphFormat)
+function loadgraphs(fn::AbstractString, format::AbstractGraphFormat=LGFormat())
     GZip.open(fn, "r") do io
         loadgraphs(io, format)
     end
 end
 
-loadgraphs(fn::AbstractString) = loadgraphs(fn, LGFormat())
-
 
 """
-    savegraph(file, g, gname="graph", format=LGFormat; compress=true)
+    savegraph(file, g, gname="graph", format=LGFormat(); compress=true)
 
 Saves a graph `g` with name `gname` to `file` in the format `format`.
 If `compress = true`, use GZip compression when writing the file.
@@ -47,8 +51,11 @@ Return the number of graphs written.
 ### Implementation Notes
 The default graph name assigned to `gname` may change in the future.
 """
-function savegraph(fn::AbstractString, g::AbstractGraph, gname::AbstractString,
-        format::AbstractGraphFormat; compress=true
+function savegraph(
+    fn::AbstractString, g::AbstractGraph, 
+    gname::AbstractString="graph", 
+    format::AbstractGraphFormat=LGFormat(); 
+    compress=true
     )
     openfn = compress ? GZip.open : open
     retval = -1
@@ -58,13 +65,10 @@ function savegraph(fn::AbstractString, g::AbstractGraph, gname::AbstractString,
     return retval
 end
 
-savegraph(fn::AbstractString, g::AbstractGraph, gname::AbstractString="graph", format=LGFormat(); compress=true) =
-    savegraph(fn, g, gname, LGFormat, compress=compress)
-
-savegraph(fn::AbstractString, g::AbstractGraph, format::AbstractGraphFormat; compress=true) =
-    savegraph(fn, g, "graph", format, compress=compress)
+# save a graph without a name but with a format
+savegraph(fn::AbstractString, g::AbstractGraph, format::AbstractGraphFormat; compress=true) = savegraph(fn, g, "graph", format; compress=compress)
 """
-    savegraph(file, g, d, format=LGFormat; compress=true)
+    savegraph(file, d, format=LGFormat(); compress=true)
 
 Save a dictionary of `graphname => graph` to `file` in the format `format`.
 If `compress = true`, use GZip compression when writing the file.
@@ -74,7 +78,7 @@ Return the number of graphs written.
 Will only work if the file format supports multiple graph types.
 """
 function savegraph(fn::AbstractString, d::Dict{T,U},
-    format::AbstractGraphFormat; compress=true) where T<:AbstractString where U<:AbstractGraph
+    format::AbstractGraphFormat=LGFormat(); compress=true) where T<:AbstractString where U<:AbstractGraph
     openfn = compress ? GZip.open : open
     retval = -1
     openfn(fn, "w") do io
@@ -82,5 +86,3 @@ function savegraph(fn::AbstractString, d::Dict{T,U},
     end
     return retval
 end
-
-savegraph(fn::AbstractString, d::Dict; compress=true) = savegraph(fn, d, LGFormat(), compress=compress)
